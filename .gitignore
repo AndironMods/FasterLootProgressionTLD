@@ -1,0 +1,10 @@
+# Build output
+bin/
+obj/
+
+# Third-party / game DLLs (not ours to redistribute in source form)
+MelonLoader_Libs/
+
+# IDE
+.vs/
+*.user
