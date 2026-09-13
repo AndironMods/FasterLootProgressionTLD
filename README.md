@@ -1,4 +1,4 @@
-# Short description
+# Faster Loot Progression
 
 Adds a fully integrated "Looting" skill to The Long Dark's in-game Skills tab. Searching containers levels up the skill, and you can track your progress right in the Journal — styled to look just like the game's native skills.
 
