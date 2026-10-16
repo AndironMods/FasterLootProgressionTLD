@@ -1,6 +1,7 @@
 # Build output
 bin/
 obj/
+release/
 
 # Third-party / game DLLs (not ours to redistribute in source form)
 MelonLoader_Libs/
