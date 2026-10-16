@@ -16,6 +16,8 @@ As you level up, container searches get faster, all the way to instant looting a
   - Level 3 — +50% faster looting
   - Level 4 — +75% faster looting
   - Level 5 — +100% faster looting (instant)
+- Progress is saved per save slot (via ModData)
+- The speed bonus applies to looting only: containers, safes, locked objects and rock caches (doors, harvesting, loading zones etc. stay vanilla)
 - Tier names display in your game's language automatically
 - Display-only — does not alter the game's skill system, so all vanilla skills behave normally
 
@@ -23,15 +25,16 @@ As you level up, container searches get faster, all the way to instant looting a
 
 - The Long Dark 2.55
 - MelonLoader v0.7.3
-- FasterLootProgression mod v1.0.0
+- ModData mod (stores your progress per save slot)
 
 ## Installation
 
 1. Install MelonLoader if you haven't already (run the game once so it generates the `Mods` folder).
-2. Download this mod.
-3. Copy `FasterLootProgression.dll` into:
+2. Install ModData into the same `Mods` folder.
+3. Download this mod.
+4. Copy `FasterLootProgression.dll` into:
    `...\steamapps\common\TheLongDark\Mods\`
-4. Launch the game. Open your Journal and go to the Skills tab — "Looting" will appear at the bottom of the skill list.
+5. Launch the game. Open your Journal and go to the Skills tab — "Looting" will appear at the bottom of the skill list.
 
 ## Deinstallation
 

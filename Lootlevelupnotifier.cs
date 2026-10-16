@@ -42,8 +42,6 @@ namespace FasterLootProgression
                     footer: tierName,                  // Tier name (NOVICE, SKILLED, EXPERT, etc.)
                     tier: newLevel                 // Levels 1-5)
                 );
-
-                MelonLogger.Msg($"[LootProgression] Displayed skill level-up notification (level {newLevel}, tier '{tierName}')");
             }
             catch (System.Exception ex)
             {

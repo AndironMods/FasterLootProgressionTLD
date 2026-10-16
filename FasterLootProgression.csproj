@@ -30,6 +30,9 @@
     
     <!-- Il2Cpp mscorlib -->
     <Reference Include="Il2Cppmscorlib" HintPath="MelonLoader_Libs/Il2Cppmscorlib.dll" />
+
+    <!-- Per-save-slot storage (required mod) -->
+    <Reference Include="ModData" HintPath="MelonLoader_Libs/ModData.dll" />
   </ItemGroup>
 
 </Project>

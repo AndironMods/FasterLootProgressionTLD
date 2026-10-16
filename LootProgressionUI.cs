@@ -242,19 +242,16 @@ namespace FasterLootProgression
             }
         }
 
-        public static void ApplyPatches(HarmonyLib.Harmony harmony)
+        public static void LoadIcons()
         {
             try
             {
-                harmony.PatchAll(typeof(LootProgressionUI).Assembly);
-                MelonLogger.Msg("[LootProgressionUI] Skills-tab UI patches applied!");
-
                 IconNormal = LoadEmbeddedTexture("FasterLootProgression.Resources.two-arrows-up1.png");
                 IconSelected = LoadEmbeddedTexture("FasterLootProgression.Resources.two-arrows-up2.png");
             }
             catch (Exception ex)
             {
-                MelonLogger.Error($"[LootProgressionUI] Failed to apply UI patches: {ex}");
+                MelonLogger.Error($"[LootProgressionUI] Failed to load icons: {ex}");
             }
         }
 

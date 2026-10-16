@@ -1,4 +1,5 @@
 using System;
+using System.Text.RegularExpressions;
 using MelonLoader;
 
 namespace FasterLootProgression
@@ -20,6 +21,8 @@ namespace FasterLootProgression
         public const int LEVEL_5_THRESHOLD = 500;
         public const int MAX_POINTS = 500;
         public const int MAX_LEVEL = 5;
+
+        private static readonly Regex PointsRegex = new Regex("\"points\"\\s*:\\s*(-?\\d+)", RegexOptions.Compiled);
 
         private int m_CurrentPoints = 0;
         private int m_CurrentLevel = 1;
@@ -104,23 +107,11 @@ namespace FasterLootProgression
             try
             {
                 var skill = new LootProgressionSkill();
-                
-                if (!string.IsNullOrEmpty(json) && json.Contains("points"))
-                {
-                    int start = json.IndexOf("points") + 8;
-                    int end = json.IndexOf("}", start);
-                    if (end == -1) end = json.IndexOf(",", start);
-                    if (end == -1) end = json.Length;
-                    
-                    string pointsStr = json.Substring(start, end - start).Trim(' ', '"', ':');
-                    
-                    if (int.TryParse(pointsStr, out int points))
-                    {
-                        skill.CurrentPoints = points;
-                        skill.UpdateLevel();
-                    }
-                }
-                
+
+                var match = PointsRegex.Match(json ?? string.Empty);
+                if (match.Success && int.TryParse(match.Groups[1].Value, out int points))
+                    skill.CurrentPoints = points;
+
                 return skill;
             }
             catch (Exception ex)

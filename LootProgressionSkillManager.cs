@@ -1,166 +1,114 @@
 using MelonLoader;
+using ModData;
 using System;
 using System.IO;
 
 namespace FasterLootProgression
 {
     /// <summary>
-    /// Global manager for Loot Search skill
-    /// Handles data persistence to JSON file
+    /// Global manager for the Looting skill. Progress is stored per save slot via ModData.
     /// </summary>
     public static class LootProgressionSkillManager
     {
+        private static readonly ModDataManager s_ModData = new ModDataManager("FasterLootProgression", false);
+
         private static LootProgressionSkill s_PlayerSkill = new LootProgressionSkill();
-        private static bool s_Initialized = false;
-        private static string s_SaveFilePath = "";
+        private static string s_LegacyFilePath = "";
+        private static bool s_PersistWarned;
 
         public static LootProgressionSkill PlayerSkill => s_PlayerSkill;
 
         public static void Initialize()
         {
-            if (s_Initialized)
-                return;
-
-            s_Initialized = true;
-            
-            // Save file in The Long Dark data directory
-            string basePath = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData);
-            string savePath = Path.Combine(basePath, "TheLongDark", "Mods", "FasterLootProgression");
-            
-            MelonLogger.Msg($"[LootProgression] Save path: {savePath}");
-            
-            if (!Directory.Exists(savePath))
-            {
-                Directory.CreateDirectory(savePath);
-                MelonLogger.Msg($"[LootProgression] Created save directory");
-            }
-            
-            s_SaveFilePath = Path.Combine(savePath, "skilldata.json");
-            MelonLogger.Msg($"[LootProgression] Save file: {s_SaveFilePath}");
-            MelonLogger.Msg($"[LootProgression] Edit skilldata.json to set starting points (0-500)");
-            
-            // Load existing skill data from file
-            LoadSkillData();
-            
-            MelonLogger.Msg("[LootProgressionSkillManager] Initialized");
-            MelonLogger.Msg($"[LootProgression] Current: Level {s_PlayerSkill.CurrentLevel}, {s_PlayerSkill.CurrentPoints}/500 points");
+            string basePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            s_LegacyFilePath = Path.Combine(basePath, "TheLongDark", "Mods", "FasterLootProgression", "skilldata.json");
         }
 
         /// <summary>
-        /// Load skill data from file
+        /// Called after a save slot was loaded or created: replaces the in-memory skill with the slot's data.
         /// </summary>
-        private static void LoadSkillData()
+        internal static void OnSaveSlotEntered()
         {
-            if (File.Exists(s_SaveFilePath))
-            {
-                try
-                {
-                    string json = File.ReadAllText(s_SaveFilePath);
-                    s_PlayerSkill = LootProgressionSkill.LoadFromJson(json);
-                    MelonLogger.Msg($"[LootProgression] Loaded from file: {s_PlayerSkill.CurrentPoints} points (Level {s_PlayerSkill.CurrentLevel})");
-                }
-                catch (Exception ex)
-                {
-                    MelonLogger.Error($"[LootProgression] Error loading skill file: {ex}");
-                    s_PlayerSkill = new LootProgressionSkill();
-                }
-            }
-            else
-            {
-                // First run - create initial file with 0 points
-                s_PlayerSkill = new LootProgressionSkill();
-                SaveSkillData();
-                MelonLogger.Msg($"[LootProgression] Created new skilldata.json (starting at Level 1)");
-            }
-        }
-
-        /// <summary>
-        /// Save skill data to file
-        /// </summary>
-        public static void SaveSkillData()
-        {
-            if (!s_Initialized || string.IsNullOrEmpty(s_SaveFilePath))
-                return;
-
             try
             {
-                // Ensure directory exists
-                string directory = Path.GetDirectoryName(s_SaveFilePath);
-                if (!Directory.Exists(directory))
+                s_PlayerSkill = new LootProgressionSkill();
+                s_PersistWarned = false;
+
+                string json = s_ModData.Load();
+                if (!string.IsNullOrEmpty(json))
                 {
-                    Directory.CreateDirectory(directory);
-                    MelonLogger.Msg($"[LootProgression] Created directory: {directory}");
+                    s_PlayerSkill = LootProgressionSkill.LoadFromJson(json);
+                    LogLoaded();
+                    return;
                 }
 
-                // Write the file
-                string json = s_PlayerSkill.SaveToJson();
-                File.WriteAllText(s_SaveFilePath, json);
-                //MelonLogger.Msg($"[LootProgression] Saved: Level {s_PlayerSkill.CurrentLevel}, {s_PlayerSkill.CurrentPoints} points to {s_SaveFilePath}");
+                TryMigrateLegacyData();
             }
             catch (Exception ex)
             {
-                MelonLogger.Error($"[LootProgression] Error saving skill file: {ex}");
+                MelonLogger.Error($"Error loading skill data: {ex}");
             }
         }
 
+        // The pre-1.3.0 global skilldata.json moves into the first save slot that has no data yet.
+        private static void TryMigrateLegacyData()
+        {
+            if (!File.Exists(s_LegacyFilePath))
+                return;
+
+            s_PlayerSkill = LootProgressionSkill.LoadFromJson(File.ReadAllText(s_LegacyFilePath));
+
+            // No active ModData slot yet (e.g. main menu): stay silent and retry on the next slot.
+            if (!s_ModData.Save(s_PlayerSkill.SaveToJson()))
+                return;
+
+            File.Move(s_LegacyFilePath, s_LegacyFilePath + ".migrated", true);
+            MelonLogger.Msg($"Imported old global save into this save slot");
+            LogLoaded();
+        }
+
+        private static void LogLoaded()
+        {
+            MelonLogger.Msg($"Loaded from save: {s_PlayerSkill.CurrentPoints} points (Level {s_PlayerSkill.CurrentLevel})");
+        }
+
+        private static void Persist()
+        {
+            if (s_ModData.Save(s_PlayerSkill.SaveToJson()) || s_PersistWarned)
+                return;
+
+            s_PersistWarned = true;
+            MelonLogger.Warning("ModData has no active save slot (autosave/quicksave?). Progress is not stored for this session.");
+        }
+
         /// <summary>
-        /// Award points for opening a container
+        /// Award points for a completed container search
         /// </summary>
         public static void AwardSearchPoints(int pointValue)
         {
-            if (!s_Initialized)
-                Initialize();
-
             int newLevel = s_PlayerSkill.AddSearchPoints(pointValue);
-            
+            Persist();
+
             if (newLevel > 0)
             {
-                // Level up occurred - always show
-                MelonLogger.Msg($"[LootProgression] ★ LEVEL UP! {pointValue}pt → Level {newLevel} ★ ({s_PlayerSkill.CurrentPoints}/500 points)");
+                MelonLogger.Msg($"Looting skill reached level {newLevel}");
                 LootLevelUpNotifier.ShowLevelUp(newLevel);
             }
-            else if (s_PlayerSkill.CurrentLevel < LootProgressionSkill.MAX_LEVEL)
-            {
-                // Normal search - only show if not at max level
-                MelonLogger.Msg($"[LootProgression] +{pointValue}pt ({s_PlayerSkill.CurrentPoints}/500)");
-            }
-            // else: At max level - silent (still tracking points, just no console spam)
-            
-            SaveSkillData();
         }
 
-        /// <summary>
-        /// Get current skill level
-        /// </summary>
         public static int GetSkillLevel()
         {
             return s_PlayerSkill.CurrentLevel;
         }
 
-        /// <summary>
-        /// Get speed multiplier for current level
-        /// </summary>
         public static float GetSpeedMultiplier()
         {
             return s_PlayerSkill.GetSpeedMultiplier();
         }
 
-        /// <summary>
-        /// Get current points
-        /// </summary>
         public static int GetCurrentPoints()
         {
             return s_PlayerSkill.CurrentPoints;
-        }
-
-        /// <summary>
-        /// Reset skill (for testing)
-        /// </summary>
-        public static void ResetSkill()
-        {
-            s_PlayerSkill = new LootProgressionSkill();
-            SaveSkillData();
-            MelonLogger.Msg("[LootProgressionSkillManager] Skill reset");
         }
     }
 }
